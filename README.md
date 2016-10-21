@@ -21,4 +21,4 @@ make
 ```
 
 ## In-Depth Guide and Documentation
-Checkout [docs.link-labs.com](http://docs.link-labs.com).
+Checkout [docs.link-labs.com](http://docs.link-labs.com/m/52162/c/184122).
