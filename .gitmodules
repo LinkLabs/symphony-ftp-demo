@@ -1,3 +1,0 @@
-[submodule "inc/--force"]
-	path = inc/--force
-	url = https://github.com/LinkLabs/host-interface
