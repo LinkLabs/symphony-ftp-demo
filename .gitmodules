@@ -1,3 +1,3 @@
-[submodule "inc/host-interface"]
-	path = inc/host-interface
-	url = https://github.com/linklabs/host-interface
+[submodule "inc/--force"]
+	path = inc/--force
+	url = https://github.com/LinkLabs/host-interface
