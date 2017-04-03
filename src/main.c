@@ -17,44 +17,37 @@
 #include "ll_ifc_transport_pc.h"
 
 // Uncomment for debug text
- #define DEBUG
+#define DEBUG
 
 ////////////////////////////////////////////////////////////////////////////////
 // FTP Variables
 ////////////////////////////////////////////////////////////////////////////////
 static ll_ftp_t           ftp;
 static ll_ftp_callbacks_t ftp_callbacks;
-static FILE *storage;
+static FILE *             storage;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Utility Definitions
 ////////////////////////////////////////////////////////////////////////////////
-static const char *ftp_return_translate[] = {
-    "LL_FTP_OK, Success.\n",
-    "LL_FTP_OOR, Out of range.\n",
-    "LL_FTP_INVALID_VALUE, Invalid input value.\n",
-    "LL_FTP_NO_ACTION, No action.\n",
-    "LL_FTP_ERROR Error.\n"
-};
+static const char *ftp_return_translate[] = {"LL_FTP_OK, Success.\n", "LL_FTP_OOR, Out of range.\n",
+                                             "LL_FTP_INVALID_VALUE, Invalid input value.\n",
+                                             "LL_FTP_NO_ACTION, No action.\n",
+                                             "LL_FTP_ERROR Error.\n"};
 
-static const char *ftp_state_translate[] = {
-    "IDLE\n",
-    "SEGMENT\n",
-    "APPLY\n"
-};
+static const char *ftp_state_translate[] = {"IDLE\n", "SEGMENT\n", "APPLY\n"};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Utiilty Functions
 ////////////////////////////////////////////////////////////////////////////////
 static void print_irq_flags_text(uint32_t flags);
-static void print_ll_ftp_error(char* label, ll_ftp_return_code_t ret_val);
+static void print_ll_ftp_error(char *label, ll_ftp_return_code_t ret_val);
 static void print_ll_ifc_error(char *label, int32_t ret_val);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Symphony FTP Callbacks
 ////////////////////////////////////////////////////////////////////////////////
 static ll_ftp_return_code_t ftp_open_callback(uint32_t file_id, uint32_t file_version,
-       uint32_t file_size)
+                                              uint32_t file_size)
 {
 #ifdef DEBUG
     printf("Open Callback Called!\n");
@@ -76,7 +69,7 @@ static ll_ftp_return_code_t ftp_open_callback(uint32_t file_id, uint32_t file_ve
 }
 
 static ll_ftp_return_code_t ftp_read_callback(uint32_t file_id, uint32_t file_version,
-       uint32_t offset, uint8_t* payload, uint16_t len)
+                                              uint32_t offset, uint8_t *payload, uint16_t len)
 {
 #ifdef DEBUG
     printf("Read Callback Called!\n");
@@ -95,7 +88,7 @@ static ll_ftp_return_code_t ftp_read_callback(uint32_t file_id, uint32_t file_ve
 }
 
 static ll_ftp_return_code_t ftp_write_callback(uint32_t file_id, uint32_t file_version,
-       uint32_t offset, uint8_t* payload, uint16_t len)
+                                               uint32_t offset, uint8_t *payload, uint16_t len)
 {
 #ifdef DEBUG
     printf("Write Callback Called!\n");
@@ -129,7 +122,8 @@ static ll_ftp_return_code_t ftp_close_callback(uint32_t file_id, uint32_t file_v
     return func_ret;
 }
 
-static ll_ftp_return_code_t ftp_apply_callback(uint32_t file_id, uint32_t file_version, uint32_t file_size)
+static ll_ftp_return_code_t ftp_apply_callback(uint32_t file_id, uint32_t file_version,
+                                               uint32_t file_size)
 {
 #ifdef DEBUG
     printf("Apply Callback Called!\n");
@@ -145,8 +139,8 @@ static ll_ftp_return_code_t ftp_apply_callback(uint32_t file_id, uint32_t file_v
     return func_ret;
 }
 
-static ll_ftp_return_code_t ftp_send_uplink_callback(const uint8_t* buf, uint8_t len,
-       bool acked, uint8_t port)
+static ll_ftp_return_code_t ftp_send_uplink_callback(const uint8_t *buf, uint8_t len, bool acked,
+                                                     uint8_t port)
 {
 #ifdef DEBUG
     printf("Send Uplink Callback Called!\n");
@@ -175,9 +169,9 @@ static ll_ftp_return_code_t ftp_dl_config_callback(bool downlink_on)
     printf("Downlink Config Callback Called!\n");
 #endif
 
-    uint8_t app_token[APP_TOKEN_LEN], qos;
+    uint8_t               app_token[APP_TOKEN_LEN], qos;
     enum ll_downlink_mode dl_mode;
-    uint32_t net_token, ret;
+    uint32_t              net_token, ret;
 
     ret = ll_config_get(&net_token, app_token, &dl_mode, &qos);
     print_ll_ifc_error("config get", ret);
@@ -207,19 +201,19 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    uint8_t app_token[APP_TOKEN_LEN], qos;
+    uint8_t               app_token[APP_TOKEN_LEN], qos;
     enum ll_downlink_mode dl_mode;
-    uint32_t net_token, ret;
-    uint8_t count = 0;
+    uint32_t              net_token, ret;
+    uint8_t               count = 0;
 
     // Register FTP Callbacks
-    ftp_callbacks.open    = ftp_open_callback;
-    ftp_callbacks.read    = ftp_read_callback;
-    ftp_callbacks.write   = ftp_write_callback;
-    ftp_callbacks.close   = ftp_close_callback;
-    ftp_callbacks.apply   = ftp_apply_callback;
-    ftp_callbacks.uplink  = ftp_send_uplink_callback;
-    ftp_callbacks.config  = ftp_dl_config_callback;
+    ftp_callbacks.open   = ftp_open_callback;
+    ftp_callbacks.read   = ftp_read_callback;
+    ftp_callbacks.write  = ftp_write_callback;
+    ftp_callbacks.close  = ftp_close_callback;
+    ftp_callbacks.apply  = ftp_apply_callback;
+    ftp_callbacks.uplink = ftp_send_uplink_callback;
+    ftp_callbacks.config = ftp_dl_config_callback;
 
     ret = ll_ftp_init(&ftp, &ftp_callbacks);
     print_ll_ftp_error("ll_ftp_init", ret);
@@ -253,10 +247,10 @@ int main(int argc, char *argv[])
         if (irq_flags & IRQ_FLAGS_RX_DONE)
         {
             puts("\n\nRecieving Packet...");
-            uint8_t buff[256];
-            int16_t rssi;
-            uint8_t raw_snr;
-            uint8_t port;
+            uint8_t  buff[256];
+            int16_t  rssi;
+            uint8_t  raw_snr;
+            uint8_t  port;
             uint16_t len = sizeof(buff);
 
             ret = ll_retrieve_message(buff, &len, &port, &rssi, &raw_snr);
@@ -270,11 +264,12 @@ int main(int argc, char *argv[])
             printf("len: %i, port: %i, rssi:%i, raw_snr: %i\nbuffer: ", len, port, rssi, raw_snr);
             for (int i = 0; i < len; i++)
             {
-               printf("%02X", buff[i]);
+                printf("%02X", buff[i]);
             }
             puts("\n--------------------------------------------------------------\n");
 
-            printf("Recieved %i segments out of %i!\n\n", ftp.num_segs - ll_ftp_num_missing_segs_get(&ftp), ftp.num_segs);
+            printf("Recieved %i segments out of %i!\n\n",
+                   ftp.num_segs - ll_ftp_num_missing_segs_get(&ftp), ftp.num_segs);
 
             if (128 == port)
             {
@@ -294,69 +289,69 @@ int main(int argc, char *argv[])
 static void print_irq_flags_text(uint32_t flags)
 {
     // Most significant bit to least significant bit
-    if(IRQ_FLAGS_ASSERT & flags)
+    if (IRQ_FLAGS_ASSERT & flags)
     {
         printf("[IRQ_FLAGS_ASSERT]");
     }
-    if(IRQ_FLAGS_APP_TOKEN_ERROR & flags)
+    if (IRQ_FLAGS_APP_TOKEN_ERROR & flags)
     {
         printf("[IRQ_FLAGS_APP_TOKEN_ERROR]");
     }
-    if(IRQ_FLAGS_CRYPTO_ERROR & flags)
+    if (IRQ_FLAGS_CRYPTO_ERROR & flags)
     {
         printf("[IRQ_FLAGS_CRYPTO_ERROR]");
     }
-    if(IRQ_FLAGS_DOWNLINK_REQUEST_ACK & flags)
+    if (IRQ_FLAGS_DOWNLINK_REQUEST_ACK & flags)
     {
         printf("[IRQ_FLAGS_DOWNLINK_REQUEST_ACK]");
     }
-    if(IRQ_FLAGS_INITIALIZATION_COMPLETE & flags)
+    if (IRQ_FLAGS_INITIALIZATION_COMPLETE & flags)
     {
         printf("[IRQ_FLAGS_INITIALIZATION_COMPLETE]");
     }
-    if(IRQ_FLAGS_APP_TOKEN_CONFIRMED & flags)
+    if (IRQ_FLAGS_APP_TOKEN_CONFIRMED & flags)
     {
         printf("[IRQ_FLAGS_APP_TOKEN_CONFIRMED]");
     }
-    if(IRQ_FLAGS_CRYPTO_ESTABLISHED & flags)
+    if (IRQ_FLAGS_CRYPTO_ESTABLISHED & flags)
     {
         printf("[IRQ_FLAGS_CRYPTO_ESTABLISHED]");
     }
-    if(IRQ_FLAGS_DISCONNECTED & flags)
+    if (IRQ_FLAGS_DISCONNECTED & flags)
     {
         printf("[IRQ_FLAGS_DISCONNECTED]");
     }
-    if(IRQ_FLAGS_CONNECTED & flags)
+    if (IRQ_FLAGS_CONNECTED & flags)
     {
         printf("[IRQ_FLAGS_CONNECTED]");
     }
-    if(IRQ_FLAGS_RX_DONE & flags)
+    if (IRQ_FLAGS_RX_DONE & flags)
     {
         printf("[IRQ_FLAGS_RX_DONE]");
     }
-    if(IRQ_FLAGS_TX_ERROR & flags)
+    if (IRQ_FLAGS_TX_ERROR & flags)
     {
         printf("[IRQ_FLAGS_TX_ERROR]");
     }
-    if(IRQ_FLAGS_TX_DONE & flags)
+    if (IRQ_FLAGS_TX_DONE & flags)
     {
         printf("[IRQ_FLAGS_TX_DONE]");
     }
-    if(IRQ_FLAGS_RESET & flags)
+    if (IRQ_FLAGS_RESET & flags)
     {
         printf("[IRQ_FLAGS_RESET]");
     }
-    if(IRQ_FLAGS_WDOG_RESET & flags)
+    if (IRQ_FLAGS_WDOG_RESET & flags)
     {
         printf("[IRQ_FLAGS_WDOG_RESET]");
     }
-    if(flags != 0)
+    if (flags != 0)
     {
         printf("\n");
     }
 }
 
-static void print_ll_ftp_error(char* label, ll_ftp_return_code_t ret_val)
+static void print_ll_ftp_error(char *label, ll_ftp_return_code_t ret_val)
 {
     if (ret_val != LL_FTP_OK)
     {
@@ -375,7 +370,7 @@ static void print_ll_ifc_error(char *label, int32_t ret_val)
         {
             ret_val = 0 - ret_val;
         }
-        switch(ret_val)
+        switch (ret_val)
         {
             case LL_IFC_NACK_CMD_NOT_SUPPORTED:
                 fprintf(stderr, "NACK received - Command not supported");
