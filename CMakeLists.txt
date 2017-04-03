@@ -9,6 +9,7 @@ add_executable(symphony-ftp-demo
     inc/host-interface/src/ll_ifc_ftp.c
     inc/host-interface/src/ll_ifc_no_mac.c
     inc/host-interface/src/ll_ifc_symphony.c
+    inc/host-interface/src/ll_ifc_utils.c
     inc/host-interface/src/ll_ifc_time_pc.c
     inc/host-interface/src/ll_ifc_transport_pc.c
     inc/host-interface/src/ifc_struct_defs.c
