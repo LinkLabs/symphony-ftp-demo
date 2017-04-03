@@ -25,6 +25,7 @@
 static ll_ftp_t           ftp;
 static ll_ftp_callbacks_t ftp_callbacks;
 static FILE *             storage;
+static bool               s_exit = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Utility Definitions
@@ -135,7 +136,7 @@ static ll_ftp_return_code_t ftp_apply_callback(uint32_t file_id, uint32_t file_v
     printf("Apply Callback returned %s\n", ftp_return_translate[func_ret]);
 #endif
 
-    exit(EXIT_SUCCESS);
+    s_exit = true;
     return func_ret;
 }
 
@@ -276,6 +277,11 @@ int main(int argc, char *argv[])
         else
         {
             ll_ftp_msg_process(&ftp, NULL, 0);
+        }
+
+        if (s_exit)
+        {
+            exit(EXIT_SUCCESS);
         }
     }
     return 0;
