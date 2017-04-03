@@ -224,19 +224,6 @@ int main(int argc, char *argv[])
     print_ll_ifc_error("ll_tty_open", ret);
     assert(ret >= 0);
 
-    puts("Waiting for module to bootup...");
-    sleep(8);
-
-    puts("done.\nSetting up DL Config...");
-    ret = ll_config_get(&net_token, app_token, &dl_mode, &qos);
-    print_ll_ifc_error("ll_config_get", ret);
-    assert(ret >= 0);
-
-    ret = ll_config_set(net_token, app_token, LL_DL_ALWAYS_ON, 0);
-    print_ll_ifc_error("ll_config_set", ret);
-    assert(ret >= 0);
-
-    puts("done.\nWaiting for downlink messages...");
     while (true)
     {
         sleep(1);
@@ -246,36 +233,44 @@ int main(int argc, char *argv[])
 
         if (irq_flags & IRQ_FLAGS_RX_DONE)
         {
-            puts("\n\nRecieving Packet...");
-            uint8_t  buff[256];
-            int16_t  rssi;
-            uint8_t  raw_snr;
-            uint8_t  port;
-            uint16_t len = sizeof(buff);
-
-            ret = ll_retrieve_message(buff, &len, &port, &rssi, &raw_snr);
-            print_ll_ifc_error("ll_retrieve_message", ret);
-
+            // Clear IRQ Flags
             ret = ll_irq_flags(IRQ_FLAGS_RX_DONE, &irq_flags);
             print_ll_ifc_error("ll_irq_flags", ret);
             assert(ret >= 0);
 
-            puts("--------------------------------------------------------------");
-            printf("len: %i, port: %i, rssi:%i, raw_snr: %i\nbuffer: ", len, port, rssi, raw_snr);
-            for (int i = 0; i < len; i++)
+            // Polling Recieve Message
+            while (ret >= LL_IFC_ACK)
             {
-                printf("%02X", buff[i]);
-            }
-            puts("\n--------------------------------------------------------------\n");
+                uint8_t  buff[256];
+                int16_t  rssi;
+                uint8_t  raw_snr;
+                uint8_t  port;
+                uint16_t len = sizeof(buff);
 
-            printf("Recieved %i segments out of %i!\n\n",
-                   ftp.num_segs - ll_ftp_num_missing_segs_get(&ftp), ftp.num_segs);
+                ret = ll_retrieve_message(buff, &len, &port, &rssi, &raw_snr);
+                if (ret < LL_IFC_ACK || len == 0)
+                {
+                    break;
+                }
 
-            if (128 == port)
-            {
-                ll_ftp_return_code_t ftp_ret = ll_ftp_msg_process(&ftp, buff, len);
-                print_ll_ftp_error("ll_ftp_msg_process", ftp_ret);
-                assert(ret >= 0);
+                puts("--------------------------------------------------------------");
+                printf("len: %i, port: %i, rssi:%i, raw_snr: %i\nbuffer: ", len, port, rssi,
+                       raw_snr);
+                for (int i = 0; i < len; i++)
+                {
+                    printf("%02X", buff[i]);
+                }
+                puts("\n--------------------------------------------------------------\n");
+
+                printf("Recieved %i segments out of %i!\n\n",
+                       ftp.num_segs - ll_ftp_num_missing_segs_get(&ftp), ftp.num_segs);
+
+                if (128 == port)
+                {
+                    ll_ftp_return_code_t ftp_ret = ll_ftp_msg_process(&ftp, buff, len);
+                    print_ll_ftp_error("ll_ftp_msg_process", ftp_ret);
+                    assert(ret >= 0);
+                }
             }
         }
         else
