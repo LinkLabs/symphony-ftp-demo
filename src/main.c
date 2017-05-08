@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include <sys/time.h>
+#include <time.h>
 #include <stdbool.h>
 
 #include "ll_ifc.h"
@@ -43,6 +43,7 @@ static const char *ftp_state_translate[] = {"IDLE\n", "SEGMENT\n", "APPLY\n"};
 static void print_irq_flags_text(uint32_t flags);
 static void print_ll_ftp_error(char *label, ll_ftp_return_code_t ret_val);
 static void print_ll_ifc_error(char *label, int32_t ret_val);
+static void handle_rx_done_flag();
 
 ////////////////////////////////////////////////////////////////////////////////
 // Symphony FTP Callbacks
@@ -205,7 +206,6 @@ int main(int argc, char *argv[])
     uint8_t               app_token[APP_TOKEN_LEN], qos;
     enum ll_downlink_mode dl_mode;
     uint32_t              net_token, ret;
-    uint8_t               count = 0;
 
     // Register FTP Callbacks
     ftp_callbacks.open   = ftp_open_callback;
@@ -225,6 +225,12 @@ int main(int argc, char *argv[])
     print_ll_ifc_error("ll_tty_open", ret);
     assert(ret >= 0);
 
+    ret = ll_config_get(&net_token, app_token, &dl_mode, &qos);
+    print_ll_ifc_error("config get", ret);
+    assert(ret >= 0);
+
+    time_t last_check = time(0);
+
     while (true)
     {
         sleep(1);
@@ -232,47 +238,52 @@ int main(int argc, char *argv[])
         ret = ll_irq_flags(0, &irq_flags);
         assert(ret >= 0);
 
-        if (irq_flags & IRQ_FLAGS_RX_DONE)
+        if (dl_mode == LL_DL_MAILBOX)
+        {
+            time_t now = time(0);
+
+            if ((now / 60) - (last_check / 60) >= 5)
+            {
+                ret = ll_mailbox_request();
+                print_ll_ifc_error("ll_mailbox_request", ret);
+
+                uint32_t irq_flags;
+                ret = ll_irq_flags(0, &irq_flags);
+                assert(ret >= 0);
+
+                if (irq_flags & IRQ_FLAGS_RX_DONE)
+                {
+                    // Clear IRQ Flags
+                    int32_t ret = ll_irq_flags(IRQ_FLAGS_RX_DONE, &irq_flags);
+                    print_ll_ifc_error("ll_irq_flags", ret);
+                    assert(ret >= 0);
+
+                    handle_rx_done_flag();
+                }
+                else if (irq_flags & IRQ_FLAGS_MAILBOX_EMPTY)
+                {
+                    // Clear IRQ Flags
+                    int32_t ret = ll_irq_flags(IRQ_FLAGS_MAILBOX_EMPTY, &irq_flags);
+                    print_ll_ifc_error("ll_irq_flags", ret);
+                    assert(ret >= 0);
+
+                    ll_ftp_msg_process(&ftp, NULL, 0);
+                }
+            }
+            else
+            {
+                printf("Checking mailbox in %i seconds\n", (5-((now/60)-(last_check/60))));
+                ll_ftp_msg_process(&ftp, NULL, 0);
+            }
+        }
+        else if (irq_flags & IRQ_FLAGS_RX_DONE)
         {
             // Clear IRQ Flags
-            ret = ll_irq_flags(IRQ_FLAGS_RX_DONE, &irq_flags);
+            int32_t ret = ll_irq_flags(IRQ_FLAGS_RX_DONE, &irq_flags);
             print_ll_ifc_error("ll_irq_flags", ret);
             assert(ret >= 0);
 
-            // Polling Recieve Message
-            while (ret >= LL_IFC_ACK)
-            {
-                uint8_t  buff[256];
-                int16_t  rssi;
-                uint8_t  raw_snr;
-                uint8_t  port;
-                uint16_t len = sizeof(buff);
-
-                ret = ll_retrieve_message(buff, &len, &port, &rssi, &raw_snr);
-                if (ret < LL_IFC_ACK || len == 0)
-                {
-                    break;
-                }
-
-                puts("--------------------------------------------------------------");
-                printf("len: %i, port: %i, rssi:%i, raw_snr: %i\nbuffer: ", len, port, rssi,
-                       raw_snr);
-                for (int i = 0; i < len; i++)
-                {
-                    printf("%02X", buff[i]);
-                }
-                puts("\n--------------------------------------------------------------\n");
-
-                printf("Recieved %i segments out of %i!\n\n",
-                       ftp.num_segs - ll_ftp_num_missing_segs_get(&ftp), ftp.num_segs);
-
-                if (128 == port)
-                {
-                    ll_ftp_return_code_t ftp_ret = ll_ftp_msg_process(&ftp, buff, len);
-                    print_ll_ftp_error("ll_ftp_msg_process", ftp_ret);
-                    assert(ret >= 0);
-                }
-            }
+            handle_rx_done_flag();
         }
         else
         {
@@ -285,6 +296,46 @@ int main(int argc, char *argv[])
         }
     }
     return 0;
+}
+
+static void handle_rx_done_flag()
+{
+    int32_t ret;
+
+    // Polling Recieve Message
+    while (ret >= LL_IFC_ACK)
+    {
+        uint8_t  buff[256];
+        int16_t  rssi;
+        uint8_t  raw_snr;
+        uint8_t  port;
+        uint16_t len = sizeof(buff);
+
+        ret = ll_retrieve_message(buff, &len, &port, &rssi, &raw_snr);
+        if (ret < LL_IFC_ACK || len == 0)
+        {
+            break;
+        }
+
+        puts("--------------------------------------------------------------");
+        printf("len: %i, port: %i, rssi:%i, raw_snr: %i\nbuffer: ", len, port, rssi,
+               raw_snr);
+        for (int i = 0; i < len; i++)
+        {
+            printf("%02X", buff[i]);
+        }
+        puts("\n--------------------------------------------------------------\n");
+
+        printf("Recieved %i segments out of %i!\n\n",
+               ftp.num_segs - ll_ftp_num_missing_segs_get(&ftp), ftp.num_segs);
+
+        if (128 == port)
+        {
+            ll_ftp_return_code_t ftp_ret = ll_ftp_msg_process(&ftp, buff, len);
+            print_ll_ftp_error("ll_ftp_msg_process", ftp_ret);
+            assert(ret >= 0);
+        }
+    }
 }
 
 static void print_irq_flags_text(uint32_t flags)
