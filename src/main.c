@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include <time.h>
+#include <sys/time.h>
 #include <stdbool.h>
 
 #include "ll_ifc.h"
@@ -229,7 +229,9 @@ int main(int argc, char *argv[])
     print_ll_ifc_error("config get", ret);
     assert(ret >= 0);
 
-    time_t last_check = time(0);
+    //time_t last_check = time(NULL);
+    struct timeval last_check;
+    gettimeofday(&last_check, NULL);
 
     while (true)
     {
@@ -240,10 +242,15 @@ int main(int argc, char *argv[])
 
         if (dl_mode == LL_DL_MAILBOX)
         {
-            time_t now = time(0);
+            //time_t now = time(NULL);
+            struct timeval now;
+            gettimeofday(&now, NULL);
 
-            if ((now / 60) - (last_check / 60) >= 5)
+            if (now.tv_sec - last_check.tv_sec >= (5*60))
             {
+                printf("Checking mailbox...\n");
+                gettimeofday(&last_check, NULL);
+
                 ret = ll_mailbox_request();
                 print_ll_ifc_error("ll_mailbox_request", ret);
 
@@ -272,7 +279,7 @@ int main(int argc, char *argv[])
             }
             else
             {
-                printf("Checking mailbox in %i seconds\n", (5-((now/60)-(last_check/60))));
+                printf("Checking mailbox in %i seconds\n", (5*60) - (now.tv_sec - last_check.tv_sec));
                 ll_ftp_msg_process(&ftp, NULL, 0);
             }
         }
