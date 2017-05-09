@@ -181,7 +181,7 @@ static ll_ftp_return_code_t ftp_dl_config_callback(bool downlink_on)
 
     dl_mode = (downlink_on) ? LL_DL_ALWAYS_ON : LL_DL_MAILBOX;
 
-    ret = ll_config_set(net_token, app_token, dl_mode, 0);
+    ret = ll_config_set(net_token, app_token, dl_mode, qos);
     print_ll_ifc_error("config set", ret);
     assert(ret >= 0);
 
@@ -235,6 +235,10 @@ int main(int argc, char *argv[])
 
     while (true)
     {
+        ret = ll_config_get(&net_token, app_token, &dl_mode, &qos);
+        print_ll_ifc_error("config get", ret);
+        assert(ret >= 0);
+
         sleep(1);
         uint32_t irq_flags;
         ret = ll_irq_flags(0, &irq_flags);
@@ -242,6 +246,7 @@ int main(int argc, char *argv[])
 
         if (dl_mode == LL_DL_MAILBOX)
         {
+
             //time_t now = time(NULL);
             struct timeval now;
             gettimeofday(&now, NULL);
@@ -258,17 +263,18 @@ int main(int argc, char *argv[])
                 ret = ll_irq_flags(0, &irq_flags);
                 assert(ret >= 0);
 
-                if (irq_flags & IRQ_FLAGS_RX_DONE)
-                {
+//                if (irq_flags & IRQ_FLAGS_RX_DONE)
+//                {
                     // Clear IRQ Flags
-                    int32_t ret = ll_irq_flags(IRQ_FLAGS_RX_DONE, &irq_flags);
-                    print_ll_ifc_error("ll_irq_flags", ret);
-                    assert(ret >= 0);
+//                    int32_t ret = ll_irq_flags(IRQ_FLAGS_RX_DONE, &irq_flags);
+//                    print_ll_ifc_error("ll_irq_flags", ret);
+//                    assert(ret >= 0);
 
-                    handle_rx_done_flag();
-                }
-                else if (irq_flags & IRQ_FLAGS_MAILBOX_EMPTY)
+                handle_rx_done_flag();
+//                }
+                /*else*/ if (irq_flags & IRQ_FLAGS_MAILBOX_EMPTY)
                 {
+                    printf("Mailbox is empty!\n");
                     // Clear IRQ Flags
                     int32_t ret = ll_irq_flags(IRQ_FLAGS_MAILBOX_EMPTY, &irq_flags);
                     print_ll_ifc_error("ll_irq_flags", ret);
