@@ -4,12 +4,13 @@
 // For in-depth explanation of this program,
 // check out http://docs.link-labs.com
 
+#include <assert.h>
+#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
 #include <sys/time.h>
-#include <stdbool.h>
+#include <unistd.h>
 
 #include "ll_ifc.h"
 #include "ll_ifc_ftp.h"
@@ -18,6 +19,8 @@
 
 // Uncomment for debug text
 #define DEBUG
+#define MAILBOX_INT (5*60)
+#undef MAILBOX_MODE
 
 ////////////////////////////////////////////////////////////////////////////////
 // FTP Variables
@@ -141,8 +144,7 @@ static ll_ftp_return_code_t ftp_apply_callback(uint32_t file_id, uint32_t file_v
     return func_ret;
 }
 
-static ll_ftp_return_code_t ftp_send_uplink_callback(const uint8_t *buf, uint8_t len, bool acked,
-                                                     uint8_t port)
+static ll_ftp_return_code_t ftp_send_uplink_callback(const uint8_t *buf, uint16_t len, bool acked, uint8_t port)
 {
 #ifdef DEBUG
     printf("Send Uplink Callback Called!\n");
@@ -153,8 +155,9 @@ static ll_ftp_return_code_t ftp_send_uplink_callback(const uint8_t *buf, uint8_t
     }
     printf("\n");
 #endif
-
-    int32_t ret = ll_message_send(buf, len, acked, port);
+    uint8_t buffer[128];
+    memcpy(buffer, buf, len);
+    int32_t ret = ll_message_send(buffer, len, acked, port);
     print_ll_ifc_error("uplink send", ret);
 
     ll_ftp_return_code_t func_ret = (ret == 0) ? LL_FTP_OK : LL_FTP_ERROR;
@@ -179,7 +182,11 @@ static ll_ftp_return_code_t ftp_dl_config_callback(bool downlink_on)
     print_ll_ifc_error("config get", ret);
     assert(ret >= 0);
 
+#ifdef MAILBOX_MODE
     dl_mode = (downlink_on) ? LL_DL_ALWAYS_ON : LL_DL_MAILBOX;
+#else
+    dl_mode = LL_DL_ALWAYS_ON;
+#endif
 
     ret = ll_config_set(net_token, app_token, dl_mode, qos);
     print_ll_ifc_error("config set", ret);
@@ -251,7 +258,7 @@ int main(int argc, char *argv[])
             struct timeval now;
             gettimeofday(&now, NULL);
 
-            if (now.tv_sec - last_check.tv_sec >= (5*60))
+            if (now.tv_sec - last_check.tv_sec >= (MAILBOX_INT))
             {
                 printf("Checking mailbox...\n");
                 gettimeofday(&last_check, NULL);
@@ -285,7 +292,7 @@ int main(int argc, char *argv[])
             }
             else
             {
-                printf("Checking mailbox in %i seconds\n", (5*60) - (now.tv_sec - last_check.tv_sec));
+                printf("Checking mailbox in %li seconds\n", (MAILBOX_INT) - (now.tv_sec - last_check.tv_sec));
                 ll_ftp_msg_process(&ftp, NULL, 0);
             }
         }
