@@ -155,9 +155,9 @@ static ll_ftp_return_code_t ftp_send_uplink_callback(const uint8_t *buf, uint16_
     }
     printf("\n");
 #endif
-    uint8_t buffer[128];
-    memcpy(buffer, buf, len);
-    int32_t ret = ll_message_send(buffer, len, acked, port);
+    //uint8_t buffer[128];
+    //memcpy(buffer, buf, len);
+    int32_t ret = ll_message_send(buf, len, acked, port);
     print_ll_ifc_error("uplink send", ret);
 
     ll_ftp_return_code_t func_ret = (ret == 0) ? LL_FTP_OK : LL_FTP_ERROR;
